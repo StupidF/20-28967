@@ -1,0 +1,266 @@
+C51 COMPILER V9.54   GSM                                                                   11/19/2019 23:01:00 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE GSM
+OBJECT MODULE PLACED IN ..\Output\GSM.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE GSM\GSM.c LARGE OPTIMIZE(8,SPEED) BROWSE INCDIR(.\GSM;.\Ultrasonic;.\XY-
+                    -V17B;.\DS18B20;.\uart;.\delay;.\LED;.\BH1750) DEBUG OBJECTEXTEND PRINT(..\Listing\GSM.lst) OBJECT(..\Output\GSM.obj)
+
+line level    source
+
+   1          #include "GSM.h"
+   2          #include "string.h"
+   3          #include "uart.h"
+   4          #include "delay.h"
+   5          
+   6          
+   7           u8 Uart2_Buf[Buf1_Max];
+   8          
+   9          u8 times_r[25];
+  10          
+  11          u8 Times=0,First_Int = 0;
+  12          unsigned int   Timer0_start=0;
+  13          
+  14          
+  15          static unsigned char *SMS_Num="\"+8613800250500\"";//短信中心号 关于中心号的介绍可以看串口调试笔记的第二部
+             -分
+  16          static unsigned char *phone="\"15655366706\"";     //短信接收方手机号
+  17          unsigned char content[] = "Please Help mi!"; //发送短信内容
+  18          
+  19          /*******************************************************************************
+  20          * 函数名 : CLR_Buf1
+  21          * 描述   : 清除串口2缓存数据
+  22          * 输入   : 
+  23          * 输出   : 
+  24          * 返回   : 
+  25          * 注意   : 
+  26          *******************************************************************************/
+  27          void CLR_Buf1(void)
+  28          {
+  29   1              u16 k;
+  30   1              for(k=0;k<Buf1_Max;k++)      //将缓存内容清零
+  31   1              {
+  32   2                      Uart2_Buf[k] = 0x00;
+  33   2              }
+  34   1          First_Int = 0;              //接收字符串的起始存储位置
+  35   1      }
+  36          
+  37          /*******************************************************************************
+  38          * 函数名 : Find
+  39          * 描述   : 判断缓存中是否含有指定的字符串
+  40          * 输入   : 
+  41          * 输出   : 
+  42          * 返回   : unsigned char:1 找到指定字符，0 未找到指定字符 
+  43          * 注意   : 
+  44          *******************************************************************************/
+  45          
+  46          u8 Find(u8 *a)
+  47          { 
+  48   1              if(strstr(Uart2_Buf,a)!=NULL)
+  49   1                  return 1;
+  50   1              else
+  51   1                      return 0;
+  52   1      }
+  53          
+C51 COMPILER V9.54   GSM                                                                   11/19/2019 23:01:00 PAGE 2   
+
+  54          /*******************************************************************************
+  55          * 函数名 : Second_AT_Command
+  56          * 描述   : 发送AT指令函数
+  57          * 输入   : 发送数据的指针、希望收到的应答、发送等待时间(单位：S)
+  58          * 输出   : 
+  59          * 返回   : 
+  60          * 注意   : 
+  61          *******************************************************************************/
+  62          
+  63          void Second_AT_Command(u8 *b,u8 *a,u8 wait_time)         
+  64          {
+  65   1              u8 i;
+  66   1              u8 *c;
+  67   1              c = b;                                                                          //保存字符串地址到c
+  68   1              CLR_Buf1(); 
+  69   1              i = 0;
+  70   1              Timer0_start=0;
+  71   1              while(i == 0)                    
+  72   1              {
+  73   2                      if(!Find(a))           //查找需要应答的字符
+  74   2                      {
+  75   3                              Timer0_start++;
+  76   3                              if(Timer0_start >(wait_time*300) )//超时重新发送命令
+  77   3                              {
+  78   4                                      Timer0_start= 0;
+  79   4                                      b = c;                                           //将字符串地址给b
+  80   4                                      for (b; *b!='\0';b++)
+  81   4                                      {
+  82   5                                              UART2_SendData(*b);     
+  83   5                                      }
+  84   4                                      UART2_SendLR();         //回车换行
+  85   4                         }
+  86   3                      }
+  87   2                      else
+  88   2                      {
+  89   3                              i = 1;
+  90   3                              Timer0_start = 0;  
+  91   3                      }
+  92   2              }
+  93   1              CLR_Buf1(); 
+  94   1      }
+  95          
+  96          /*******************************************************************************
+  97          * 函数名 : Set_Text_Mode
+  98          * 描述   : 设置短信为TEXT文本模式
+  99          * 输入   : 
+ 100          * 输出   : 
+ 101          * 返回   : 
+ 102          * 注意   : 
+ 103          *******************************************************************************/
+ 104          void Set_Text_Mode(void)
+ 105          {
+ 106   1              unsigned char temp[50]="AT+CSCA=";
+ 107   1              Second_AT_Command("ATE0","OK",3);                                                       //取消回显      
+ 108   1              Second_AT_Command("AT+CMGF=1","OK",3);                                          //TEXT模式      
+ 109   1              //Second_AT_Command("AT+CPMS=\"SM\",\"SM\",\"SM\"","OK",3);     //所有操作都在SIM卡中进行
+ 110   1              strcat(temp,SMS_Num);             //信息中心号码字符串组合                                                              //字符串拼接函数（库函数）
+ 111   1              Second_AT_Command(temp,"OK",3); //发送                                                  //设置短信中心号
+ 112   1      }
+ 113          /*******************************************************************************
+ 114          * 函数名 : Send_Text_Sms
+ 115          * 描述   : 发送TEXT文本短信
+C51 COMPILER V9.54   GSM                                                                   11/19/2019 23:01:00 PAGE 3   
+
+ 116          * 输入   : 
+ 117          * 输出   : 
+ 118          * 返回   : 
+ 119          * 注意   : 
+ 120          *******************************************************************************/
+ 121          void Send_Text_Sms(void)
+ 122          {
+ 123   1              unsigned char temp[50]="AT+CMGS=";
+ 124   1              
+ 125   1              strcat(temp,phone);                     //字符串拼接函数（库函数）
+ 126   1              Second_AT_Command(temp,">",3);  //等待接收到“>”才发送短信内容
+ 127   1              UART2_SendString(content);      //发送短信内容
+ 128   1              UART2_SendData(0X1A);           //发送结束符
+ 129   1      }
+ 130          
+ 131          /*******************************************************************************
+ 132          * 函数名 : Wait_CREG
+ 133          * 描述   : 等待模块注册成功
+ 134          * 输入   : 
+ 135          * 输出   : 
+ 136          * 返回   : 
+ 137          * 注意   : 
+ 138          *******************************************************************************/
+ 139          void Wait_CREG(void)
+ 140          {
+ 141   1              u8 i;
+ 142   1              u8 k;
+ 143   1              i = 0;
+ 144   1              CLR_Buf1();
+ 145   1              while(i == 0)                           
+ 146   1              {
+ 147   2                      CLR_Buf1();        
+ 148   2                      UART2_SendString("AT+CREG?");//查询模块网络注册状态
+ 149   2                      UART2_SendLR();       //发送回车换行
+ 150   2                      delay_ms(550);                                                  
+ 151   2                  for(k=0;k<Buf1_Max;k++)                             
+ 152   2              {
+ 153   3                              if(Uart2_Buf[k] == ':')
+ 154   3                              {
+ 155   4                                      if((Uart2_Buf[k+4] == '1')||(Uart2_Buf[k+4] == '5')) //表明网络注册成功
+ 156   4                                      {
+ 157   5                                              i = 1;
+ 158   5                                              break;
+ 159   5                                      }
+ 160   4                              }
+ 161   3                      }
+ 162   2              }
+ 163   1      }
+ 164          
+ 165          void Send_SeekhelpMSG()
+ 166          {
+ 167   1              Set_Text_Mode();        //设置短信为TEXT模式
+ 168   1              Send_Text_Sms();        //发送一条短消息
+ 169   1      }
+ 170          
+ 171          void SendCMD_TIME()
+ 172          {
+ 173   1              
+ 174   1              UART2_SendString("AT+CCLK?\r\n");
+ 175   1      }
+ 176          
+ 177          u8 GET_time()
+C51 COMPILER V9.54   GSM                                                                   11/19/2019 23:01:00 PAGE 4   
+
+ 178          {
+ 179   1              uchar i,j;
+ 180   1              uchar bigin[6]= "+CCLK:";
+ 181   1              uchar *resault;
+ 182   1              for(i=0;i<Buf1_Max;i++)
+ 183   1              {
+ 184   2                      if((Uart2_Buf[i]=='"') && (Uart2_Buf[i-1]==' ')||(Uart2_Buf[i]=='"') && (Uart2_Buf[i-1]==':'))
+ 185   2                      {
+ 186   3                              for(j=0;j<25;j++)
+ 187   3                              {
+ 188   4                                      times_r[j]=0;
+ 189   4                              }
+ 190   3                              for(j=0;j<25;j++)
+ 191   3                              {
+ 192   4                                      times_r[j]= Uart2_Buf[i+j];
+ 193   4                              }       
+ 194   3                              times_r[j] = '\0';
+ 195   3      //                      UART1_SendString(times_r);
+ 196   3                              return;
+*** WARNING C173 IN LINE 196 OF GSM\GSM.c: missing return-expression
+ 197   3                      }
+ 198   2              }
+ 199   1      }
+*** WARNING C173 IN LINE 199 OF GSM\GSM.c: missing return-expression
+*** WARNING C280 IN LINE 181 OF GSM\GSM.c: 'resault': unreferenced local variable
+ 200                  
+ 201                  
+ 202          void GSM_INIT(void)
+ 203          {
+ 204   1              UART2_SendString("AT+CLTS=1\r\n");
+ 205   1              Wait_CREG();            //等待模块网络注册成功
+ 206   1      }
+ 207          
+ 208          /*******************************************************************************
+ 209          * 函数名 : Uart2 
+ 210          * 描述   : 串口2中断服务入口函数
+ 211          * 输入   : 
+ 212          * 输出   : 
+ 213          * 返回   : 
+ 214          * 注意   : 
+ 215          *******************************************************************************/
+ 216          void Uart2() interrupt 8
+ 217          {
+ 218   1          if ( S2CON&S2RI)
+ 219   1          {
+ 220   2                      S2CON&=~S2RI;                    //清除RI位
+ 221   2                      Uart2_Buf[First_Int] = S2BUF;    //将接收到的字符串存到缓存中
+ 222   2                      //UART1_SendData(Uart2_Buf[First_Int]);
+ 223   2                      First_Int++;                     //缓存指针向后移动
+ 224   2                      if(First_Int > Buf1_Max)         //如果缓存满,将缓存指针指向缓存的首地址
+ 225   2                      {
+ 226   3                              First_Int = 0;
+ 227   3                      }
+ 228   2          }
+ 229   1      }
+*** WARNING C290 IN LINE 199 OF GSM\GSM.c: missing return value
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    806    ----
+   CONSTANT SIZE    =    189    ----
+   XDATA SIZE       =    151     125
+C51 COMPILER V9.54   GSM                                                                   11/19/2019 23:01:00 PAGE 5   
+
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  4 WARNING(S),  0 ERROR(S)

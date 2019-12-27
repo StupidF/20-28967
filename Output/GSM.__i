@@ -1,0 +1,1 @@
+"GSM\GSM.c" LARGE OPTIMIZE (8,SPEED) BROWSE INCDIR(.\GSM;.\Ultrasonic;.\XY-V17B;.\DS18B20;.\uart;.\delay;.\LED;.\BH1750) DEBUG OBJECTEXTEND PRINT(..\Listing\GSM.lst) OBJECT(..\Output\GSM.obj)

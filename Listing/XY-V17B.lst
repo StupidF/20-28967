@@ -1,0 +1,609 @@
+C51 COMPILER V9.54   XY_V17B                                                               11/19/2019 22:55:46 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE XY_V17B
+OBJECT MODULE PLACED IN ..\Output\XY-V17B.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE XY-V17B\XY-V17B.c LARGE OPTIMIZE(8,SPEED) BROWSE INCDIR(.\GSM;.\Ultrason
+                    -ic;.\XY-V17B;.\DS18B20;.\uart;.\delay;.\LED;.\BH1750) DEBUG OBJECTEXTEND PRINT(..\Listing\XY-V17B.lst) OBJECT(..\Output\
+                    -XY-V17B.obj)
+
+line level    source
+
+   1          #include "XY-V17B.h"
+   2          #include "uart.h"
+   3          
+   4          
+   5          
+   6          unsigned char  WebSendCount = 1;
+   7          unsigned char  WebSendPos   = 0;
+   8          unsigned char  ZigbeeUartSend[15];
+   9          unsigned char  ZigbeeUartSend_oled[10];
+  10          unsigned char  TF_Mode[]       = {0xaa, 0x0B, 0x01, 0x01, 0xB7, 0XFF };
+  11          unsigned char  COMD_Play[]     = {0xAA, 0x1B, 0x00, 0XAC, 0XFF       };
+  12          unsigned char  COMD_Stop[]     = {0xaa, 0x04, 0x00, 0xae, 0XFF       }; //
+  13          unsigned char  COMD_panfu[]    = {0xaa, 0x09, 0x00, 0xB3, 0XFF       };   //盘符查询
+  14          unsigned char  COMD_VOL []     = {0xaa, 0x13, 0x01, 0x00, 0xD2, 0XFF };
+  15          unsigned char  COMD_Play_1[]   = {0xAA, 0x07, 0x02, 0X00, 0x01, 0xB4,0XFF };
+  16          unsigned char  COMD_Play_2[]   = {0xAA, 0x07, 0x02, 0X00, 0x02, 0xB5,0XFF };
+  17          unsigned char  COMD_Play_3[]   = {0xAA, 0x07, 0x02, 0X00, 0x03, 0xB6,0XFF };
+  18          unsigned char  COMD_Play_4[]   = {0xAA, 0x07, 0x02, 0X00, 0x04, 0xB7,0XFF };
+  19          unsigned char  COMD_Play_5[]   = {0xAA, 0x07, 0x02, 0X00, 0x05, 0xB8,0XFF };
+  20          unsigned char  COMD_Play_6[]   = {0xAA, 0x07, 0x02, 0X00, 0x06, 0xB9,0XFF };
+  21          unsigned char  COMD_Play_7[]   = {0xAA, 0x07, 0x02, 0X00, 0x07, 0xBA,0XFF };
+  22          unsigned char  COMD_Play_8[]   = {0xAA, 0x07, 0x02, 0X00, 0x08, 0xBB,0XFF };
+  23          unsigned char  COMD_Play_9[]   = {0xAA, 0x07, 0x02, 0X00, 0x09, 0xBC,0XFF };
+  24          unsigned char  COMD_Play_10[]  = {0xAA, 0x07, 0x02, 0X00, 0x0A, 0xBD,0XFF };
+  25          unsigned char  COMD_Play_11[]  = {0xAA, 0x07, 0x02, 0X00, 0x0B, 0xBE,0XFF };
+  26          
+  27          
+  28          
+  29          void XY_V17B_INIT(void)
+  30          {
+  31   1              SCON=0x50;          //串口选择模式1, 8-bit UART, 使能接收    
+  32   1          TMOD|=0x20;     //用定时器1设置波特率
+  33   1          TH1=0xFD;     
+  34   1          TR1=1;           
+  35   1              TI=1;                   //开启串口中断
+  36   1              ES = 1;
+  37   1              EA = 1;
+  38   1      }
+  39          
+  40          void SOURCEvoice(unsigned char TEMPTURE )
+  41          {
+  42   1              if(TEMPTURE<10 && TEMPTURE>0)   //小于10度
+  43   1              {
+  44   2                      ZigbeeUartSend[0] = 0XAA;
+  45   2                      ZigbeeUartSend[1] = 0X1B;
+  46   2                      ZigbeeUartSend[2] = 0X06;               //长度
+  47   2                      ZigbeeUartSend[3] = 0X32;
+  48   2                      ZigbeeUartSend[4] = 0X31;               //第一段  ‘当前温度’
+  49   2                      ZigbeeUartSend[6] = 0X30;
+  50   2                      ZigbeeUartSend[7] = TEMPTURE%10+0X30;   //温度值
+  51   2                      ZigbeeUartSend[8] = 0X32;
+  52   2                      ZigbeeUartSend[9] = 0X32;       //第三段  ‘摄氏度’
+  53   2                      ZigbeeUartSend[10] = (ZigbeeUartSend[0]
+C51 COMPILER V9.54   XY_V17B                                                               11/19/2019 22:55:46 PAGE 2   
+
+  54   2                                                              +ZigbeeUartSend[1]
+  55   2                                                              +ZigbeeUartSend[2]
+  56   2                                                              +ZigbeeUartSend[3]
+  57   2                                                              +ZigbeeUartSend[4]
+  58   2                                                              +ZigbeeUartSend[5]
+  59   2                                                              +ZigbeeUartSend[6]
+  60   2                                                              +ZigbeeUartSend[7]
+  61   2                                                              +ZigbeeUartSend[8]
+  62   2                                                              +ZigbeeUartSend[9])/256;                
+  63   2                      WebSendCount = 11; 
+  64   2                      WebSendPos=1;   
+  65   2                      ES = 1;
+  66   2              }
+  67   1              else if(TEMPTURE == 10)     //10度分开处理
+  68   1              {
+  69   2                      ZigbeeUartSend[0] = 0XAA;
+  70   2                      ZigbeeUartSend[1] = 0X1B;
+  71   2                      ZigbeeUartSend[2] = 0X06;               //长度
+  72   2                      ZigbeeUartSend[3] = 0X32;
+  73   2                      ZigbeeUartSend[4] = 0X31;               //第一段  ‘当前温度’
+  74   2                      ZigbeeUartSend[5] = 0X31;               
+  75   2                      ZigbeeUartSend[6] = 0X30;       //第二段  温度
+  76   2                      ZigbeeUartSend[7] = 0X32;
+  77   2                      ZigbeeUartSend[8] = 0X32;       //第三段  ‘摄氏度’
+  78   2                      
+  79   2                      ZigbeeUartSend[8] = 0x32;
+  80   2                      ZigbeeUartSend[8] = 0x33;               //当前时间
+  81   2                      
+  82   2                      ZigbeeUartSend[9] = (ZigbeeUartSend[0]
+  83   2                                                              +ZigbeeUartSend[1]
+  84   2                                                              +ZigbeeUartSend[2]
+  85   2                                                              +ZigbeeUartSend[3]
+  86   2                                                              +ZigbeeUartSend[4]
+  87   2                                                              +ZigbeeUartSend[5]
+  88   2                                                              +ZigbeeUartSend[6]
+  89   2                                                              +ZigbeeUartSend[7]
+  90   2                                                              +ZigbeeUartSend[8])%256;                
+  91   2                      WebSendCount = 10; 
+  92   2                      WebSendPos=0;   
+  93   2                      while(WebSendPos<WebSendCount)
+  94   2                      {
+  95   3                              SBUF = ZigbeeUartSend[WebSendPos];
+  96   3                              WebSendPos++;                   
+  97   3                              while(!TI);    //若TI=0，在此等待  
+  98   3                              TI = 0; 
+  99   3                      }
+ 100   2              }
+ 101   1              else if(TEMPTURE>=10 &&TEMPTURE<20)     //十到二十度
+ 102   1              {
+ 103   2                      ZigbeeUartSend[0] = 0XAA;
+ 104   2                      ZigbeeUartSend[1] = 0X1B;
+ 105   2                      ZigbeeUartSend[2] = 0X06;               //长度
+ 106   2                      ZigbeeUartSend[3] = 0X32;
+ 107   2                      ZigbeeUartSend[4] = 0X31;               //当前温度
+ 108   2                      ZigbeeUartSend[5] = 0X31;
+ 109   2                      ZigbeeUartSend[6] = TEMPTURE%10+0x30;  //温度值
+ 110   2                      ZigbeeUartSend[7] = 0X32;
+ 111   2                      ZigbeeUartSend[8] = 0X32;       //第三段  ‘摄氏度’
+ 112   2                      ZigbeeUartSend[9] = (ZigbeeUartSend[0]
+ 113   2                                                              +ZigbeeUartSend[1]
+ 114   2                                                              +ZigbeeUartSend[2]
+ 115   2                                                              +ZigbeeUartSend[3]
+C51 COMPILER V9.54   XY_V17B                                                               11/19/2019 22:55:46 PAGE 3   
+
+ 116   2                                                              +ZigbeeUartSend[4]
+ 117   2                                                              +ZigbeeUartSend[5]
+ 118   2                                                              +ZigbeeUartSend[6]
+ 119   2                                                              +ZigbeeUartSend[7]
+ 120   2                                                              +ZigbeeUartSend[8])%256;
+ 121   2      //              ZigbeeUartSend[10] = '\0';
+ 122   2      //              UART1_SendString(ZigbeeUartSend);       
+ 123   2                      WebSendCount = 10; 
+ 124   2                      WebSendPos=0;
+ 125   2                      while(WebSendPos<WebSendCount)
+ 126   2                      {
+ 127   3                              SBUF = ZigbeeUartSend[WebSendPos];
+ 128   3                              WebSendPos++;                   
+ 129   3                              while(!TI);    //若TI=0，在此等待  
+ 130   3                              TI = 0; 
+ 131   3                      }
+ 132   2              }
+ 133   1              else 
+ 134   1              {
+ 135   2                      ZigbeeUartSend[0]  = 0XAA;
+ 136   2                      ZigbeeUartSend[1]  = 0X1B;
+ 137   2                      ZigbeeUartSend[2]  = 0X08;  //长度
+ 138   2                      ZigbeeUartSend[3]  = 0X32;
+ 139   2                      ZigbeeUartSend[4]  = 0X31;              //当前温度
+ 140   2                      ZigbeeUartSend[5]  = 0X30;
+ 141   2                      ZigbeeUartSend[6]  = TEMPTURE/10+0x30;  //温度值
+ 142   2                      ZigbeeUartSend[7]  = 0X31;
+ 143   2                      ZigbeeUartSend[8]  = TEMPTURE%10 +0x30;
+ 144   2                      ZigbeeUartSend[9]  = 0X32;
+ 145   2                      ZigbeeUartSend[10] = 0X32;       //第三段  ‘摄氏度     
+ 146   2                      ZigbeeUartSend[11] = (ZigbeeUartSend[0]
+ 147   2                                                              +ZigbeeUartSend[1]
+ 148   2                                                              +ZigbeeUartSend[2]
+ 149   2                                                              +ZigbeeUartSend[3]
+ 150   2                                                              +ZigbeeUartSend[4]
+ 151   2                                                              +ZigbeeUartSend[5]
+ 152   2                                                              +ZigbeeUartSend[6]
+ 153   2                                                              +ZigbeeUartSend[7]
+ 154   2                                                              +ZigbeeUartSend[8]
+ 155   2                                                              +ZigbeeUartSend[9]
+ 156   2                                                              +ZigbeeUartSend[10])%256;                       
+ 157   2                      WebSendCount = 12; 
+ 158   2                      WebSendPos=0;
+ 159   2                      while(WebSendPos<WebSendCount)
+ 160   2                      {
+ 161   3                              SBUF = ZigbeeUartSend[WebSendPos];
+ 162   3                              WebSendPos++;                   
+ 163   3                              while(!TI);    //若TI=0，在此等待  
+ 164   3                              TI = 0; 
+ 165   3                      }
+ 166   2              }       
+ 167   1      }
+ 168          
+ 169          void SOURCEvoiceTime(unsigned char hour,unsigned char minute )
+ 170          {
+ 171   1              if(hour<10 && hour>0)   //小于十时
+ 172   1              {
+ 173   2                      if(minute<10)
+ 174   2                      {
+ 175   3                              ZigbeeUartSend[0] = 0XAA;
+ 176   3                              ZigbeeUartSend[1] = 0X1B;
+ 177   3                              ZigbeeUartSend[2] = 0X06;               //长度
+C51 COMPILER V9.54   XY_V17B                                                               11/19/2019 22:55:46 PAGE 4   
+
+ 178   3                              ZigbeeUartSend[3] = 0X32;
+ 179   3                              ZigbeeUartSend[4] = 0X33;               //第一段  ‘当前时间’
+ 180   3                              ZigbeeUartSend[5] = 0X30;
+ 181   3                              ZigbeeUartSend[6] = hour%10+0X30;       //温度值
+ 182   3                              ZigbeeUartSend[7] = 0X32;
+ 183   3                              ZigbeeUartSend[8] = 0X34;       //第三段  ‘小时’
+ 184   3                              ZigbeeUartSend[9] = 0X30;
+ 185   3                              ZigbeeUartSend[10] = minute%10+0X30;    //温度值
+ 186   3                              ZigbeeUartSend[11] = 0X32;
+ 187   3                              ZigbeeUartSend[12] = 0X35;       //第三段  ‘小时’
+ 188   3                              ZigbeeUartSend[13] = (ZigbeeUartSend[0]
+ 189   3                                                                      +ZigbeeUartSend[1]
+ 190   3                                                                      +ZigbeeUartSend[2]
+ 191   3                                                                      +ZigbeeUartSend[3]
+ 192   3                                                                      +ZigbeeUartSend[4]
+ 193   3                                                                      +ZigbeeUartSend[5]
+ 194   3                                                                      +ZigbeeUartSend[6]
+ 195   3                                                                      +ZigbeeUartSend[7]
+ 196   3                                                                      +ZigbeeUartSend[8]
+ 197   3                                                                      +ZigbeeUartSend[9]
+ 198   3                                                                      +ZigbeeUartSend[10]
+ 199   3                                                                      +ZigbeeUartSend[11]
+ 200   3                                                                      +ZigbeeUartSend[12])/256;               
+ 201   3                              WebSendCount = 14; 
+ 202   3                              WebSendPos=1;   
+ 203   3                              while(WebSendPos<WebSendCount)
+ 204   3                              {
+ 205   4                                      SBUF = ZigbeeUartSend[WebSendPos];
+ 206   4                                      WebSendPos++;                   
+ 207   4                                      while(!TI);    //若TI=0，在此等待  
+ 208   4                                      TI = 0; 
+ 209   4                              }
+ 210   3                      }
+ 211   2                      else if(minute == 10)
+ 212   2                      {
+ 213   3                              ZigbeeUartSend[0] = 0XAA;
+ 214   3                              ZigbeeUartSend[1] = 0X1B;
+ 215   3                              ZigbeeUartSend[2] = 0X06;               //长度
+ 216   3                              ZigbeeUartSend[3] = 0X32;
+ 217   3                              ZigbeeUartSend[4] = 0X33;               //第一段  ‘当前时间’
+ 218   3                              ZigbeeUartSend[5] = 0X30;
+ 219   3                              ZigbeeUartSend[6] = hour%10+0X30;       //小时数
+ 220   3                              ZigbeeUartSend[7] = 0X32;
+ 221   3                              ZigbeeUartSend[8] = 0X34;       //第三段  ‘小时’
+ 222   3                              ZigbeeUartSend[9] = 0X31;
+ 223   3                              ZigbeeUartSend[10] = 0X30;              //分钟数
+ 224   3                              ZigbeeUartSend[11] = 0X32;
+ 225   3                              ZigbeeUartSend[12] = 0X35;       //第三段  ‘分钟’
+ 226   3                              
+ 227   3                              ZigbeeUartSend[13] = (ZigbeeUartSend[0]
+ 228   3                                                                      +ZigbeeUartSend[1]
+ 229   3                                                                      +ZigbeeUartSend[2]
+ 230   3                                                                      +ZigbeeUartSend[3]
+ 231   3                                                                      +ZigbeeUartSend[4]
+ 232   3                                                                      +ZigbeeUartSend[5]
+ 233   3                                                                      +ZigbeeUartSend[6]
+ 234   3                                                                      +ZigbeeUartSend[7]
+ 235   3                                                                      +ZigbeeUartSend[8]
+ 236   3                                                                      +ZigbeeUartSend[9]
+ 237   3                                                                      +ZigbeeUartSend[10]
+ 238   3                                                                      +ZigbeeUartSend[11]
+ 239   3                                                                      +ZigbeeUartSend[12])/256;               
+C51 COMPILER V9.54   XY_V17B                                                               11/19/2019 22:55:46 PAGE 5   
+
+ 240   3                              WebSendCount = 14; 
+ 241   3                              WebSendPos=1;   
+ 242   3                              while(WebSendPos<WebSendCount)
+ 243   3                              {
+ 244   4                                      SBUF = ZigbeeUartSend[WebSendPos];
+ 245   4                                      WebSendPos++;                   
+ 246   4                                      while(!TI);    //若TI=0，在此等待  
+ 247   4                                      TI = 0; 
+ 248   4                              }
+ 249   3                      }
+ 250   2                      else
+ 251   2                      {
+ 252   3                              ZigbeeUartSend[0] = 0XAA;
+ 253   3                              ZigbeeUartSend[1] = 0X1B;
+ 254   3                              ZigbeeUartSend[2] = 0X06;               //长度
+ 255   3                              ZigbeeUartSend[3] = 0X32;
+ 256   3                              ZigbeeUartSend[4] = 0X33;               //第一段  ‘当前时间’
+ 257   3                              ZigbeeUartSend[5] = 0X30;
+ 258   3                              ZigbeeUartSend[6] = hour%10+0X30;       //小时数
+ 259   3                              ZigbeeUartSend[7] = 0X32;
+ 260   3                              ZigbeeUartSend[8] = 0X34;       //第三段  ‘小时’
+ 261   3                              ZigbeeUartSend[8] = 0x30;
+ 262   3                              ZigbeeUartSend[9] = minute/10+0X30;
+ 263   3                              ZigbeeUartSend[10] = 0x31;
+ 264   3                              ZigbeeUartSend[11] = 0x30;
+ 265   3                              ZigbeeUartSend[12] = 0X30;              //分钟数
+ 266   3                              ZigbeeUartSend[13] = minute%10 + 0x30;
+ 267   3                              ZigbeeUartSend[14] = 0X32;
+ 268   3                              ZigbeeUartSend[15] = 0X35;       //第三段  ‘分钟’
+ 269   3                              
+ 270   3                              ZigbeeUartSend[16] = (ZigbeeUartSend[0]
+ 271   3                                                                      +ZigbeeUartSend[1]
+ 272   3                                                                      +ZigbeeUartSend[2]
+ 273   3                                                                      +ZigbeeUartSend[3]
+ 274   3                                                                      +ZigbeeUartSend[4]
+ 275   3                                                                      +ZigbeeUartSend[5]
+ 276   3                                                                      +ZigbeeUartSend[6]
+ 277   3                                                                      +ZigbeeUartSend[7]
+ 278   3                                                                      +ZigbeeUartSend[8]
+ 279   3                                                                      +ZigbeeUartSend[9]
+ 280   3                                                                      +ZigbeeUartSend[10]
+ 281   3                                                                      +ZigbeeUartSend[11]
+ 282   3                                                                      +ZigbeeUartSend[12]
+ 283   3                                                                      +ZigbeeUartSend[13]
+ 284   3                                                                      +ZigbeeUartSend[14]
+ 285   3                                                                      +ZigbeeUartSend[15])/256;               
+ 286   3                              WebSendCount = 17; 
+ 287   3                              WebSendPos=1;   
+ 288   3                              while(WebSendPos<WebSendCount)
+ 289   3                              {
+ 290   4                                      SBUF = ZigbeeUartSend[WebSendPos];
+ 291   4                                      WebSendPos++;                   
+ 292   4                                      while(!TI);    //若TI=0，在此等待  
+ 293   4                                      TI = 0; 
+ 294   4                              }
+ 295   3                      }
+ 296   2              }
+ 297   1              else if(hour==10)       //等于十时
+ 298   1              {
+ 299   2                      if(minute<10)
+ 300   2                      {
+ 301   3                              ZigbeeUartSend[0] = 0XAA;
+C51 COMPILER V9.54   XY_V17B                                                               11/19/2019 22:55:46 PAGE 6   
+
+ 302   3                              ZigbeeUartSend[1] = 0X1B;
+ 303   3                              ZigbeeUartSend[2] = 0X06;               //长度
+ 304   3                              ZigbeeUartSend[3] = 0X32;
+ 305   3                              ZigbeeUartSend[4] = 0X33;               //第一段  ‘当前时间’
+ 306   3                              ZigbeeUartSend[5] = 0X31;
+ 307   3                              ZigbeeUartSend[6] = 0X30;               //时
+ 308   3                              ZigbeeUartSend[7] = 0X32;
+ 309   3                              ZigbeeUartSend[8] = 0X34;       //第三段  ‘时’
+ 310   3                              ZigbeeUartSend[9] = 0X30;
+ 311   3                              ZigbeeUartSend[10] = minute%10+0X30;    //分钟数
+ 312   3                              ZigbeeUartSend[11] = 0X32;
+ 313   3                              ZigbeeUartSend[12] = 0X35;       //第三段  ‘分钟’
+ 314   3                              
+ 315   3                              ZigbeeUartSend[13] = (ZigbeeUartSend[0]
+ 316   3                                                                      +ZigbeeUartSend[1]
+ 317   3                                                                      +ZigbeeUartSend[2]
+ 318   3                                                                      +ZigbeeUartSend[3]
+ 319   3                                                                      +ZigbeeUartSend[4]
+ 320   3                                                                      +ZigbeeUartSend[5]
+ 321   3                                                                      +ZigbeeUartSend[6]
+ 322   3                                                                      +ZigbeeUartSend[7]
+ 323   3                                                                      +ZigbeeUartSend[8]
+ 324   3                                                                      +ZigbeeUartSend[9]
+ 325   3                                                                      +ZigbeeUartSend[10]
+ 326   3                                                                      +ZigbeeUartSend[11]
+ 327   3                                                                      +ZigbeeUartSend[12])/256;               
+ 328   3                              WebSendCount = 14; 
+ 329   3                              WebSendPos=1;   
+ 330   3                              while(WebSendPos<WebSendCount)
+ 331   3                              {
+ 332   4                                      SBUF =  ZigbeeUartSend[WebSendPos];
+ 333   4                                      WebSendPos++;
+ 334   4                              }
+ 335   3                      }
+ 336   2                      else if(minute == 10)
+ 337   2                      {
+ 338   3                              ZigbeeUartSend[0] = 0XAA;
+ 339   3                              ZigbeeUartSend[1] = 0X1B;
+ 340   3                              ZigbeeUartSend[2] = 0X06;               //长度
+ 341   3                              ZigbeeUartSend[3] = 0X32;
+ 342   3                              ZigbeeUartSend[4] = 0X33;               //第一段  ‘当前时间’
+ 343   3                              ZigbeeUartSend[5] = 0X31;
+ 344   3                              ZigbeeUartSend[6] = 0X30;       //小时数
+ 345   3                              ZigbeeUartSend[7] = 0X32;
+ 346   3                              ZigbeeUartSend[8] = 0X34;       //第三段  ‘小时’
+ 347   3                              ZigbeeUartSend[9] = 0X31;
+ 348   3                              ZigbeeUartSend[10] = 0X30;              //分钟数
+ 349   3                              ZigbeeUartSend[11] = 0X32;
+ 350   3                              ZigbeeUartSend[12] = 0X35;       //第三段  ‘分钟’
+ 351   3                              
+ 352   3                              ZigbeeUartSend[13] = (ZigbeeUartSend[0]
+ 353   3                                                                      +ZigbeeUartSend[1]
+ 354   3                                                                      +ZigbeeUartSend[2]
+ 355   3                                                                      +ZigbeeUartSend[3]
+ 356   3                                                                      +ZigbeeUartSend[4]
+ 357   3                                                                      +ZigbeeUartSend[5]
+ 358   3                                                                      +ZigbeeUartSend[6]
+ 359   3                                                                      +ZigbeeUartSend[7]
+ 360   3                                                                      +ZigbeeUartSend[8]
+ 361   3                                                                      +ZigbeeUartSend[9]
+ 362   3                                                                      +ZigbeeUartSend[10]
+ 363   3                                                                      +ZigbeeUartSend[11]
+C51 COMPILER V9.54   XY_V17B                                                               11/19/2019 22:55:46 PAGE 7   
+
+ 364   3                                                                      +ZigbeeUartSend[12])/256;               
+ 365   3                              WebSendCount = 14; 
+ 366   3                              WebSendPos=1;   
+ 367   3                              while(WebSendPos<WebSendCount)
+ 368   3                              {
+ 369   4                                      SBUF =  ZigbeeUartSend[WebSendPos];
+ 370   4                                      WebSendPos++;
+ 371   4                              }
+ 372   3                      }
+ 373   2                      else
+ 374   2                      {
+ 375   3                              ZigbeeUartSend[0] = 0XAA;
+ 376   3                              ZigbeeUartSend[1] = 0X1B;
+ 377   3                              ZigbeeUartSend[2] = 0X06;               //长度
+ 378   3                              ZigbeeUartSend[3] = 0X32;
+ 379   3                              ZigbeeUartSend[4] = 0X33;               //第一段  ‘当前时间’
+ 380   3                              ZigbeeUartSend[5] = 0X31;
+ 381   3                              ZigbeeUartSend[6] = 0X30;       //小时数
+ 382   3                              ZigbeeUartSend[7] = 0X32;
+ 383   3                              ZigbeeUartSend[8] = 0X34;       //第三段  ‘小时’
+ 384   3                              ZigbeeUartSend[8] = 0x30;
+ 385   3                              ZigbeeUartSend[9] = minute/10+0X30;
+ 386   3                              ZigbeeUartSend[10] = 0x31;
+ 387   3                              ZigbeeUartSend[11] = 0x30;
+ 388   3                              ZigbeeUartSend[12] = 0X30;              //分钟数
+ 389   3                              ZigbeeUartSend[13] = minute%10 + 0x30;
+ 390   3                              ZigbeeUartSend[14] = 0X32;
+ 391   3                              ZigbeeUartSend[15] = 0X35;       //第三段  ‘分钟’
+ 392   3                              
+ 393   3                              ZigbeeUartSend[16] = (ZigbeeUartSend[0]
+ 394   3                                                                      +ZigbeeUartSend[1]
+ 395   3                                                                      +ZigbeeUartSend[2]
+ 396   3                                                                      +ZigbeeUartSend[3]
+ 397   3                                                                      +ZigbeeUartSend[4]
+ 398   3                                                                      +ZigbeeUartSend[5]
+ 399   3                                                                      +ZigbeeUartSend[6]
+ 400   3                                                                      +ZigbeeUartSend[7]
+ 401   3                                                                      +ZigbeeUartSend[8]
+ 402   3                                                                      +ZigbeeUartSend[9]
+ 403   3                                                                      +ZigbeeUartSend[10]
+ 404   3                                                                      +ZigbeeUartSend[11]
+ 405   3                                                                      +ZigbeeUartSend[12]
+ 406   3                                                                      +ZigbeeUartSend[13]
+ 407   3                                                                      +ZigbeeUartSend[14]
+ 408   3                                                                      +ZigbeeUartSend[15])/256;               
+ 409   3                              WebSendCount = 17; 
+ 410   3                              WebSendPos=1;   
+ 411   3                              while(WebSendPos<WebSendCount)
+ 412   3                              {
+ 413   4                                      SBUF =  ZigbeeUartSend[WebSendPos];
+ 414   4                                      WebSendPos++;
+ 415   4                              }
+ 416   3                      
+ 417   3                      }
+ 418   2              }
+ 419   1              else    //大于十小时
+ 420   1              {
+ 421   2                      if(minute<10)
+ 422   2                      {
+ 423   3                              ZigbeeUartSend[0] = 0XAA;
+ 424   3                              ZigbeeUartSend[1] = 0X1B;
+ 425   3                              ZigbeeUartSend[2] = 0X06;               //长度
+C51 COMPILER V9.54   XY_V17B                                                               11/19/2019 22:55:46 PAGE 8   
+
+ 426   3                              ZigbeeUartSend[3] = 0X32;
+ 427   3                              ZigbeeUartSend[4] = 0X33;               //第一段  ‘当前时间’
+ 428   3                              ZigbeeUartSend[5] = 0X30;
+ 429   3                              ZigbeeUartSend[6] = hour/10+0X30;       //温度值
+ 430   3                              ZigbeeUartSend[7] = 0X31;
+ 431   3                              ZigbeeUartSend[8] = 0X30;                       //十
+ 432   3                              ZigbeeUartSend[9] = 0X30;
+ 433   3                              ZigbeeUartSend[10] = hour%10+0X30;      //温度值
+ 434   3                              ZigbeeUartSend[11] = 0X32;
+ 435   3                              ZigbeeUartSend[12] = 0X34;       //第三段  ‘小时’
+ 436   3                              ZigbeeUartSend[13] = 0X30;
+ 437   3                              ZigbeeUartSend[14] = minute%10+0X30;    //温度值
+ 438   3                              ZigbeeUartSend[15] = 0X32;
+ 439   3                              ZigbeeUartSend[16] = 0X35;       //第三段  ‘小时’
+ 440   3                              
+ 441   3                              ZigbeeUartSend[17] = (ZigbeeUartSend[0]
+ 442   3                                                                      +ZigbeeUartSend[1]
+ 443   3                                                                      +ZigbeeUartSend[2]
+ 444   3                                                                      +ZigbeeUartSend[3]
+ 445   3                                                                      +ZigbeeUartSend[4]
+ 446   3                                                                      +ZigbeeUartSend[5]
+ 447   3                                                                      +ZigbeeUartSend[6]
+ 448   3                                                                      +ZigbeeUartSend[7]
+ 449   3                                                                      +ZigbeeUartSend[8]
+ 450   3                                                                      +ZigbeeUartSend[9]
+ 451   3                                                                      +ZigbeeUartSend[10]
+ 452   3                                                                      +ZigbeeUartSend[11]
+ 453   3                                                                      +ZigbeeUartSend[12]
+ 454   3                                                                      +ZigbeeUartSend[13]
+ 455   3                                                                      +ZigbeeUartSend[14]
+ 456   3                                                                      +ZigbeeUartSend[15]
+ 457   3                                                                      +ZigbeeUartSend[16])/256;               
+ 458   3                              WebSendCount = 18; 
+ 459   3                              WebSendPos=1;   
+ 460   3                              while(WebSendPos<WebSendCount)
+ 461   3                              {
+ 462   4                                      SBUF =  ZigbeeUartSend[WebSendPos];
+ 463   4                                      WebSendPos++;
+ 464   4                              }
+ 465   3                      }
+ 466   2                      else if(minute == 10)
+ 467   2                      {
+ 468   3                              ZigbeeUartSend[0] = 0XAA;
+ 469   3                              ZigbeeUartSend[1] = 0X1B;
+ 470   3                              ZigbeeUartSend[2] = 0X06;               //长度
+ 471   3                              ZigbeeUartSend[3] = 0X32;
+ 472   3                              ZigbeeUartSend[4] = 0X33;               //第一段  ‘当前时间’
+ 473   3                              ZigbeeUartSend[5] = 0X30;
+ 474   3                              ZigbeeUartSend[6] = hour/10+0X30;       //温度值
+ 475   3                              ZigbeeUartSend[7] = 0X31;
+ 476   3                              ZigbeeUartSend[8] = 0X30;                       //十
+ 477   3                              ZigbeeUartSend[9] = 0X30;
+ 478   3                              ZigbeeUartSend[10] = hour%10+0X30;      //温度值
+ 479   3                              ZigbeeUartSend[11] = 0X32;
+ 480   3                              ZigbeeUartSend[12] = 0X34;       //第三段  ‘小时’
+ 481   3                              ZigbeeUartSend[13] = 0X31;
+ 482   3                              ZigbeeUartSend[14] = 0X30;      //温度值
+ 483   3                              ZigbeeUartSend[15] = 0X32;
+ 484   3                              ZigbeeUartSend[16] = 0X35;       //第三段  ‘小时’
+ 485   3                              
+ 486   3                              ZigbeeUartSend[17] = (ZigbeeUartSend[0]
+ 487   3                                                                      +ZigbeeUartSend[1]
+C51 COMPILER V9.54   XY_V17B                                                               11/19/2019 22:55:46 PAGE 9   
+
+ 488   3                                                                      +ZigbeeUartSend[2]
+ 489   3                                                                      +ZigbeeUartSend[3]
+ 490   3                                                                      +ZigbeeUartSend[4]
+ 491   3                                                                      +ZigbeeUartSend[5]
+ 492   3                                                                      +ZigbeeUartSend[6]
+ 493   3                                                                      +ZigbeeUartSend[7]
+ 494   3                                                                      +ZigbeeUartSend[8]
+ 495   3                                                                      +ZigbeeUartSend[9]
+ 496   3                                                                      +ZigbeeUartSend[10]
+ 497   3                                                                      +ZigbeeUartSend[11]
+ 498   3                                                                      +ZigbeeUartSend[12]
+ 499   3                                                                      +ZigbeeUartSend[13]
+ 500   3                                                                      +ZigbeeUartSend[14]
+ 501   3                                                                      +ZigbeeUartSend[15]
+ 502   3                                                                      +ZigbeeUartSend[16])/256;               
+ 503   3                              WebSendCount = 18; 
+ 504   3                              WebSendPos=1;   
+ 505   3                              while(WebSendPos<WebSendCount)
+ 506   3                              {
+ 507   4                                      SBUF =  ZigbeeUartSend[WebSendPos];
+ 508   4                                      WebSendPos++;
+ 509   4                              }
+ 510   3                      }
+ 511   2                      else
+ 512   2                      {
+ 513   3                              ZigbeeUartSend[0] = 0XAA;
+ 514   3                              ZigbeeUartSend[1] = 0X1B;
+ 515   3                              ZigbeeUartSend[2] = 0X06;               //长度
+ 516   3                              ZigbeeUartSend[3] = 0X32;
+ 517   3                              ZigbeeUartSend[4] = 0X33;               //第一段  ‘当前时间’
+ 518   3                              ZigbeeUartSend[5] = 0X30;
+ 519   3                              ZigbeeUartSend[6] = hour/10+0X30;       //温度值
+ 520   3                              ZigbeeUartSend[7] = 0X31;
+ 521   3                              ZigbeeUartSend[8] = 0X30;                       //十
+ 522   3                              ZigbeeUartSend[9] = 0X30;
+ 523   3                              ZigbeeUartSend[10] = hour%10+0X30;      //温度值
+ 524   3                              ZigbeeUartSend[11] = 0X32;
+ 525   3                              ZigbeeUartSend[12] = 0X34;       //第三段  ‘小时’
+ 526   3                              ZigbeeUartSend[13] = 0X30;
+ 527   3                              ZigbeeUartSend[14] = minute/10+0X30;    //分钟
+ 528   3                              ZigbeeUartSend[15] = 0X31;
+ 529   3                              ZigbeeUartSend[16] = 0X30;      //分钟
+ 530   3                              ZigbeeUartSend[17] = 0X30;
+ 531   3                              ZigbeeUartSend[18] = minute%10+0X30;    //分钟
+ 532   3                              ZigbeeUartSend[19] = 0X32;
+ 533   3                              ZigbeeUartSend[20] = 0X35;       //第三段  ‘小时
+ 534   3                              
+ 535   3                              ZigbeeUartSend[21] = (ZigbeeUartSend[0]
+ 536   3                                                                      +ZigbeeUartSend[1]
+ 537   3                                                                      +ZigbeeUartSend[2]
+ 538   3                                                                      +ZigbeeUartSend[3]
+ 539   3                                                                      +ZigbeeUartSend[4]
+ 540   3                                                                      +ZigbeeUartSend[5]
+ 541   3                                                                      +ZigbeeUartSend[6]
+ 542   3                                                                      +ZigbeeUartSend[7]
+ 543   3                                                                      +ZigbeeUartSend[8]
+ 544   3                                                                      +ZigbeeUartSend[9]
+ 545   3                                                                      +ZigbeeUartSend[10]
+ 546   3                                                                      +ZigbeeUartSend[11]
+ 547   3                                                                      +ZigbeeUartSend[12]
+ 548   3                                                                      +ZigbeeUartSend[13]
+ 549   3                                                                      +ZigbeeUartSend[14]
+C51 COMPILER V9.54   XY_V17B                                                               11/19/2019 22:55:46 PAGE 10  
+
+ 550   3                                                                      +ZigbeeUartSend[15]
+ 551   3                                                                      +ZigbeeUartSend[16]
+ 552   3                                                                      +ZigbeeUartSend[17]
+ 553   3                                                                      +ZigbeeUartSend[18]
+ 554   3                                                                      +ZigbeeUartSend[19]
+ 555   3                                                                      +ZigbeeUartSend[20])/256;               
+ 556   3                              WebSendCount = 22; 
+ 557   3                              WebSendPos=1;   
+ 558   3                              while(WebSendPos<WebSendCount)
+ 559   3                              {
+ 560   4                                      SBUF =  ZigbeeUartSend[WebSendPos];
+ 561   4                                      WebSendPos++;
+ 562   4                              }
+ 563   3                      
+ 564   3                      }
+ 565   2              }
+ 566   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   2833    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =    131    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

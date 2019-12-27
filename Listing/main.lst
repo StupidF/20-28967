@@ -1,0 +1,281 @@
+C51 COMPILER V9.54   MAIN                                                                  11/20/2019 00:18:50 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN ..\Output\main.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE main.c LARGE OPTIMIZE(8,SPEED) BROWSE INCDIR(.\GSM;.\Ultrasonic;.\XY-V17
+                    -B;.\DS18B20;.\uart;.\delay;.\LED;.\BH1750) DEBUG OBJECTEXTEND PRINT(..\Listing\main.lst) OBJECT(..\Output\main.obj)
+
+line level    source
+
+   1          #include "config.h"
+   2          #include "delay.h"
+   3          #include "uart.h"
+   4          #include "led.h"
+   5          #include "GSM.h"
+   6          #include "Ultrasonic.h"
+   7          #include "ds18b20.h"
+   8          #include "BH1750.h"
+   9          #include "XY-V17B.h"
+  10          
+  11          extern unsigned char flag_temper;
+  12          extern unsigned char  aaa[];
+  13          extern unsigned char  times_r[25];
+  14          unsigned char RX_Buffer[68] = "00000000000000000000000000000000000000000000";
+  15          unsigned char RX_Count = 0;
+  16          
+  17          /*************  本地常量声明    **************/
+  18          
+  19          sbit K1  = P2^0;
+  20          sbit K2  = P2^1;
+  21          
+  22          
+  23          
+  24          uchar LED_MODE_C = 0;
+  25          uchar LED_MODE_G = 0;
+  26          
+  27          /*******************************************************************************
+  28          * 函数名 : main 
+  29          * 描述   : 主函数
+  30          * 输入   : 
+  31          * 输出   : 
+  32          * 返回   : 
+  33          * 注意   : 串口波特率是9600，GPRS模块默认波特率是115200，需要自己通过串口助手修改
+  34                                             为9600方可使用。 
+  35          *******************************************************************************/
+  36          void main(void)
+  37          {
+  38   1      //      unsigned int    i;
+  39   1              unsigned char   tempdat[8];
+  40   1              unsigned int    tempda1 = 0;
+  41   1              unsigned int    tempdisda1=0;
+  42   1              unsigned int    tempMultiple=0; 
+  43   1              unsigned int    tick=0;
+  44   1              unsigned int    led_tick=0;
+  45   1              unsigned char   year    =0,
+  46   1                                              month   =0,
+  47   1                                              day             =0,
+  48   1                                              hour    =0,
+  49   1                                              minute  =0;
+  50   1      //      unsigned char LED_ON=0;
+  51   1              unsigned char LED_ON_OFF=0;
+  52   1              AUXR = AUXR|0x40;  // T1, 1T Mode
+  53   1              Uart1Init();            //初始化两个串口9600
+  54   1      //      GSM_INIT();             //GSM模块初始化
+C51 COMPILER V9.54   MAIN                                                                  11/20/2019 00:18:50 PAGE 2   
+
+  55   1              UART1_SendString("1\r\n");
+  56   1              while(1)
+  57   1              {
+  58   2                      tick++;
+  59   2                      led_tick++;
+  60   2                      if(tick % 999 == 0 )
+  61   2                      {
+  62   3                              tempdisda1 = Conut();
+  63   3                              if(tempdisda1<15)
+  64   3                              {
+  65   4                                      LED_MODE_C = 1;   //常量
+  66   4                              }
+  67   3                              else if(tempdisda1>=15&& tempdisda1<30)
+  68   3                              {
+  69   4                                      LED_MODE_C= 2;  //闪烁
+  70   4                              }
+  71   3                              else
+  72   3                                      LED_MODE_C = 0;
+  73   3                      }
+  74   2                      if(tick % 3999 == 0 )   //温度检测
+  75   2                      {
+  76   3                              tempda1 = Get_temp();
+  77   3                      }
+  78   2                      if(tick % 6999 == 0 )           //光强检测
+  79   2                      {
+  80   3                              Multiple_read_BH1750();
+  81   3                              tempMultiple = GetMultipleDat();
+  82   3                              if( tempMultiple <20)
+  83   3                              {
+  84   4                                      LED_MODE_G = 1;
+  85   4                              }
+  86   3                              else
+  87   3                              {
+  88   4                                      LED_MODE_G = 0;
+  89   4                              }
+  90   3                      }
+  91   2                      if(tick % 4699 == 0 )
+  92   2                      {
+  93   3                              SendCMD_TIME();
+  94   3                      }
+  95   2                      if(tick % 5699==0)
+  96   2                      {
+  97   3                              if(GET_time()==1 )
+  98   3                              {
+  99   4                                      //UART1_SendString("ok\r\n");
+ 100   4                              }
+ 101   3                              else
+ 102   3                                      ;
+ 103   3                                      //UART1_SendString("error\r\n");
+ 104   3                      }
+ 105   2                      if( tick <= 3000)                       //显示距离
+ 106   2                      {
+ 107   3                              tempdat[0] = tempdisda1%10;
+ 108   3                              tempdat[1] = tempdisda1%100/10;
+ 109   3                              tempdat[2] = tempdisda1%1000/100;
+ 110   3                              tempdat[3] = 0;
+ 111   3                              tempdat[4] = 0;
+ 112   3                              tempdat[5] = 0;
+ 113   3                              tempdat[6] = 0;
+ 114   3                              tempdat[7] = 16;
+ 115   3                              display( tempdat );     
+ 116   3                      }
+C51 COMPILER V9.54   MAIN                                                                  11/20/2019 00:18:50 PAGE 3   
+
+ 117   2                      else if(tick > 3000 && tick <= 6000)    //显示温度
+ 118   2                      {
+ 119   3                              tempdat[0] = tempda1%10/1;
+ 120   3                              tempdat[1] = tempda1%100/10;
+ 121   3                              tempdat[2] = tempda1%1000/100;
+ 122   3                              tempdat[3] = 0;
+ 123   3                              tempdat[4] = 0;
+ 124   3                              tempdat[5] = 0;
+ 125   3                              tempdat[6] = 16;
+ 126   3                              tempdat[7] = 0;
+ 127   3                              display( tempdat );
+ 128   3                      }
+ 129   2                      else if(tick > 6000 && tick <= 9000)    //显示光强
+ 130   2                      {
+ 131   3                              tempdat[0] = tempMultiple%10/1;
+ 132   3                              tempdat[1] = tempMultiple%100/10;
+ 133   3                              tempdat[2] = tempMultiple%1000/100;
+ 134   3                              tempdat[3] = tempMultiple%10000/1000;
+ 135   3                              tempdat[4] = 0;
+ 136   3                              tempdat[5] = 16;
+ 137   3                              tempdat[6] = 0;
+ 138   3                              tempdat[7] = 0;
+ 139   3                              display( tempdat );
+ 140   3                      }
+ 141   2                      else if(tick > 9000 && tick <= 12000)//显示日期
+ 142   2                      {
+ 143   3                              tempdat[0] = times_r[8]-0x30;
+ 144   3                              tempdat[1] = times_r[7]-0x30;
+ 145   3                              tempdat[2] = 16;
+ 146   3                              tempdat[3] = times_r[5]-0x30;
+ 147   3                              tempdat[4] = times_r[4]-0x30;
+ 148   3                              tempdat[5] = 16;
+ 149   3                              tempdat[6] = times_r[2]-0x30;
+ 150   3                              tempdat[7] = times_r[1]-0x30;
+ 151   3                              display( tempdat );
+ 152   3                      }
+ 153   2                      else if(tick > 12000 && tick <= 15000)//显示时间
+ 154   2                      {
+ 155   3                              hour = times_r[14]+times_r[13]*10;
+ 156   3                              minute = times_r[11]+times_r[10]*10;
+ 157   3                              tempdat[0] = times_r[14]-0x30;
+ 158   3                              tempdat[1] = times_r[13]-0x30;
+ 159   3                              tempdat[2] = 16;
+ 160   3                              tempdat[3] = times_r[11]-0x30;
+ 161   3                              tempdat[4] = times_r[10]-0x30;
+ 162   3                              tempdat[5] = 16;
+ 163   3                              tempdat[6] = 16;
+ 164   3                              tempdat[7] = 16;
+ 165   3                              display( tempdat );
+ 166   3                      }
+ 167   2                      if(tick>15000)
+ 168   2                      {
+ 169   3                              tick = 0;
+ 170   3                      }
+ 171   2                      
+ 172   2                      if(LED_MODE_G == 1 || LED_MODE_C==1 )   ///常亮
+ 173   2                      {
+ 174   3                              RUNING_LED=0;
+ 175   3                              if(LED_MODE_G !=1)
+ 176   3                                      BEEP = 1;
+ 177   3                      }
+ 178   2                      else if(LED_MODE_C == 2 && LED_MODE_G == 0)
+C51 COMPILER V9.54   MAIN                                                                  11/20/2019 00:18:50 PAGE 4   
+
+ 179   2                      {
+ 180   3                              if(led_tick>900)
+ 181   3                              {
+ 182   4                                      RUNING_LED=0;
+ 183   4                                      BEEP = 1;
+ 184   4                              }
+ 185   3                              else
+ 186   3                              {
+ 187   4                                      RUNING_LED=1;
+ 188   4                                      BEEP = 0;
+ 189   4                              }
+ 190   3                      }
+ 191   2                      else            //关闭
+ 192   2                      {
+ 193   3                              RUNING_LED = 1;
+ 194   3                              BEEP       = 0;
+ 195   3                      }
+ 196   2                      if(led_tick>2000)
+ 197   2                      {
+ 198   3                              led_tick=0;
+ 199   3                      }
+ 200   2                      if(K1 == 0)     //发送短信
+ 201   2                      {
+ 202   3                              delay5ms();
+ 203   3                              if(K1 == 0)
+ 204   3                              {
+ 205   4                                      while(!K1); 
+ 206   4                                      Send_SeekhelpMSG();
+ 207   4                              }
+ 208   3                      }
+ 209   2                      if(K2 == 0)             //语音播报
+ 210   2                      {
+ 211   3                              delay5ms();
+ 212   3                              if(K2 == 0)
+ 213   3                              {
+ 214   4                                      while( !K2 ); 
+ 215   4      //                              SOURCEvoice(tempda1);
+ 216   4      //                              SOURCEvoiceTime(hour,minute);
+ 217   4                                      
+ 218   4                                      
+ 219   4                                      SOURCEvoice(15);
+ 220   4                              //      SOURCEvoiceTime(16,25);
+ 221   4                                      
+ 222   4                                      //Second_AT_Command( "Second_AT_Command","OK", 3);
+ 223   4                              }
+ 224   3                      }
+ 225   2                      delay5us();
+ 226   2              }
+ 227   1      }
+ 228          
+ 229          
+ 230          /*******************************************************************************
+ 231          * 函数名 : Uart2 
+ 232          * 描述   : 串口2中断服务入口函数
+ 233          * 输入   : 
+ 234          * 输出   : 
+ 235          * 返回   : 
+ 236          * 注意   : 
+ 237          *******************************************************************************/
+ 238          void RECEIVE_DATA(void) interrupt 4                     
+ 239          { 
+ 240   1              unsigned char temp = 0;
+C51 COMPILER V9.54   MAIN                                                                  11/20/2019 00:18:50 PAGE 5   
+
+ 241   1              ES=0;
+ 242   1              if (RI)
+ 243   1          {
+ 244   2                      temp = SBUF;
+ 245   2                      RI = 0;
+ 246   2              }
+ 247   1              ES=1; 
+ 248   1      }
+ 249          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1042    ----
+   CONSTANT SIZE    =      4    ----
+   XDATA SIZE       =     71      24
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
