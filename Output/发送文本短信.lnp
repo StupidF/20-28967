@@ -1,0 +1,12 @@
+"..\Output\main.obj",
+"..\Output\GSM.obj",
+"..\Output\Ultrasonic.obj",
+"..\Output\XY-V17B.obj",
+"..\Output\DS18B20.obj",
+"..\Output\uart.obj",
+"..\Output\delay.obj",
+"..\Output\LED.obj",
+"..\Output\BH1750.obj",
+"..\Output\DHT11.obj" 
+TO "..\Output\发送文本短信" 
+PRINT("..\Listing\发送文本短信.m51") RAMSIZE(256) 

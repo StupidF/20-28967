@@ -1,0 +1,1 @@
+"delay\delay.c" LARGE OPTIMIZE (8,SPEED) BROWSE INCDIR(.\GSM;.\Ultrasonic;.\XY-V17B;.\DS18B20;.\uart;.\delay;.\LED;.\BH1750;.\DHT11) DEBUG OBJECTEXTEND PRINT(..\Listing\delay.lst) OBJECT(..\Output\delay.obj)

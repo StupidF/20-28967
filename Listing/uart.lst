@@ -1,0 +1,102 @@
+C51 COMPILER V9.54   UART                                                                  12/29/2019 00:42:25 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE UART
+OBJECT MODULE PLACED IN ..\Output\uart.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE uart\uart.c LARGE OPTIMIZE(8,SPEED) BROWSE INCDIR(.\GSM;.\Ultrasonic;.\X
+                    -Y-V17B;.\DS18B20;.\uart;.\delay;.\LED;.\BH1750;.\DHT11) DEBUG OBJECTEXTEND PRINT(..\Listing\uart.lst) OBJECT(..\Output\u
+                    -art.obj)
+
+line level    source
+
+   1          #include "uart.h"
+   2          
+   3          #define S2RI 0x01   //串口2接收中断请求标志位  
+   4          #define S2TI 0x02   //串口2发送中断请求标志位 
+   5          
+   6          #define FOSC 11059200L      //System frequency
+   7          #define BAUD 9600           //UART baudrate
+   8          
+   9          void Uart1Init(void) //9600bps
+  10          {   
+  11   1              TMOD=0x21;                 //设T0为方式1，GATE=1；
+  12   1              SCON=0x50;
+  13   1              TH0=0;
+  14   1              TL0=0; 
+  15   1              TR0=1;  
+  16   1              ET0=1;             //允许T0中断
+  17   1              TR1=1;                     //开启定时器
+  18   1              TI=1;
+  19   1              EA=1;                      //开启总中断
+  20   1              TH1=0xFD;
+  21   1              TL1=0xFD;
+  22   1              ET1 = 0;                //禁止定时器1中断
+  23   1          EA =1;              //开总中断
+  24   1          ES =1;              //开串口1中断
+  25   1          S2CON = 0x50;   //串口2工作在方式1  10位异步收发 S2REN=1允许接收
+  26   1          BRT = 0xFD;     //独立波特率发生器初值
+  27   1          AUXR = 0x10;    //BRTR=1 独立波特率发生器开始计数
+  28   1          IE2 =0x01;      //开串口2中断  ES2=1
+  29   1      }
+  30          /*----------------------------
+  31          UART1 发送串口数据
+  32          -----------------------------*/
+  33          void UART1_SendData(unsigned char c)
+  34          {
+  35   1              SBUF = c;  
+  36   1              while(!TI);    //若TI=0，在此等待  
+  37   1              TI = 0;    
+  38   1      }
+  39          
+  40          
+  41          /*----------------------------
+  42          UART1 发送字符串
+  43          -----------------------------*/
+  44          void UART1_SendString(unsigned char *s)
+  45          {
+  46   1              while(*s !='\0')//检测字符串结束符
+  47   1              {
+  48   2                      UART1_SendData(*s++);//发送当前字符
+  49   2              }
+  50   1      }
+  51          
+  52          /*----------------------------
+  53          UART2 发送串口数据
+C51 COMPILER V9.54   UART                                                                  12/29/2019 00:42:25 PAGE 2   
+
+  54          -----------------------------*/
+  55          void UART2_SendData(u8 c)
+  56          {
+  57   1              S2BUF = c;  
+  58   1              while(!(S2CON&S2TI));  //若S2TI=0，在此等待  
+  59   1              S2CON&=~S2TI;     //S2TI=0    
+  60   1      }
+  61          
+  62          
+  63          /*----------------------------
+  64          UART1 发送字符串
+  65          -----------------------------*/
+  66          void UART2_SendString(char *s)
+  67          {
+  68   1              while(*s !='\0')//检测字符串结束符
+  69   1              {
+  70   2                      UART2_SendData(*s++);//发送当前字符
+  71   2              }
+  72   1      }
+  73          
+  74          
+  75          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    167    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----       6
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
